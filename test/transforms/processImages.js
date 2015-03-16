@@ -1,6 +1,6 @@
 /*global describe, it*/
 var expect = require('../unexpected-with-plugins'),
-    _ = require('underscore'),
+    _ = require('lodash'),
     AssetGraph = require('../../lib/AssetGraph'),
     urlTools = require('urltools');
 
@@ -71,7 +71,7 @@ describe('processImages', function () {
             .run(done);
     });
 
-    it('should handlea Css test case with a setFormat instruction in the query string of a background-image url', function (done) {
+    it('should handle a Css test case with a setFormat instruction in the query string of a background-image url', function (done) {
         new AssetGraph({root: __dirname + '/../../testdata/transforms/processImages/setFormat/'})
             .loadAssets('index.css')
             .populate()
@@ -158,6 +158,68 @@ describe('processImages', function () {
             .queue(function (assetGraph) {
                 expect(assetGraph.findAssets({type: 'Png'})[0].url, 'to equal', urlTools.resolveUrl(assetGraph.root, 'redalpha24bit.optipng.png'));
                 expect(assetGraph.findAssets({type: 'Css'})[0].text, 'to match', /url\(redalpha24bit\.optipng\.png\)/);
+            })
+            .run(done);
+    });
+
+    it('should apply device pixel ratio to images', function (done) {
+        new AssetGraph({root: __dirname + '/../../testdata/transforms/processImages/devicePixelRatio/'})
+            .loadAssets('style.css')
+            .populate()
+            .queue(function (assetGraph) {
+                expect(assetGraph, 'to contain asset', 'Css', 1);
+                expect(assetGraph, 'to contain asset', 'Png', 9);
+
+                expect(_.pluck(assetGraph.findAssets({ isImage: true }), 'devicePixelRatio'), 'to equal', [1, 2, 1, 1, 1, 1, 1, 8, 1]);
+            })
+            .processImages()
+            .queue(function (assetGraph) {
+                var outputs = [
+                    {
+                        type: 'Png',
+                        devicePixelRatio: 1
+                    },
+                    {
+                        type: 'Png',
+                        devicePixelRatio: 2
+                    },
+                    {
+                        type: 'Png',
+                        devicePixelRatio: 3,
+                        url: /foo\.png$/
+                    },
+                    {
+                        type: 'Png',
+                        devicePixelRatio: 1
+                    },
+                    {
+                        type: 'Png',
+                        devicePixelRatio: 5,
+                        url: /foo\.resize=,200\.png$/
+                    },
+                    {
+                        type: 'Png',
+                        devicePixelRatio: 6,
+                        url: /foo\.resize=,200\.png$/
+                    },
+                    {
+                        type: 'Png',
+                        devicePixelRatio: 7,
+                        url: /foo\.png\?foo=bar$/
+                    },
+                    {
+                        type: 'Png',
+                        devicePixelRatio: 1
+                    },
+                    {
+                        type: 'Jpeg',
+                        devicePixelRatio: 9
+                    }
+                ];
+
+                expect(assetGraph.findAssets({ isImage: true }), 'to be an array whose items satisfy', function (img, idx) {
+                    expect(img, 'to satisfy', outputs[idx]);
+                });
             })
             .run(done);
     });

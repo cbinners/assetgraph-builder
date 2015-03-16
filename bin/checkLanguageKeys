@@ -38,7 +38,7 @@ if (commandLineOptions.h) {
     process.exit(1);
 }
 
-var _ = require('underscore'),
+var _ = require('lodash'),
     AssetGraph = require('../lib/AssetGraph'),
     i18nTools = require('../lib/i18nTools'),
     query = AssetGraph.query,
@@ -53,6 +53,12 @@ var _ = require('underscore'),
     })),
     warnMessageTypes = commandLineOptions.warn && _.flatten(_.flatten([commandLineOptions.warn]).map(function (warnMessageType) {
         return warnMessageType.split(',');
+    })),
+    includeAttributeNames = commandLineOptions.includeattribute && _.flatten(_.flatten([commandLineOptions.includeattribute]).map(function (attributeName) {
+        return attributeName.split(',');
+    })),
+    excludeAttributeNames = commandLineOptions.excludeattribute && _.flatten(_.flatten([commandLineOptions.excludeattribute]).map(function (attributeName) {
+        return attributeName.split(',');
     })),
     inputUrls;
 
@@ -93,7 +99,15 @@ new AssetGraph({root: rootUrl})
             }
         )
     })
-    .checkLanguageKeys({supportedLocaleIds: localeIds, defaultLocaleId: defaultLocaleId, ignoreMessageTypes: ignoreMessageTypes, warnMessageTypes: warnMessageTypes, removeUnused: commandLineOptions.removeunused})
+    .checkLanguageKeys({
+        supportedLocaleIds: localeIds,
+        defaultLocaleId: defaultLocaleId,
+        ignoreMessageTypes: ignoreMessageTypes,
+        warnMessageTypes: warnMessageTypes,
+        removeUnused: commandLineOptions.removeunused,
+        includeAttributeNames: includeAttributeNames,
+        excludeAttributeNames: excludeAttributeNames
+    })
     .if(commandLineOptions.removeunused)
         .prettyPrintAssets({type: ['I18n'], isDirty: true})
         .writeAssetsToDisc({type: ['I18n'], isDirty: true})

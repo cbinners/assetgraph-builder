@@ -1,9 +1,9 @@
 AssetGraph-builder
 ==================
-[![NPM version](https://badge.fury.io/js/assetgraph-builder.png)](http://badge.fury.io/js/assetgraph-builder)
-[![Build Status](https://travis-ci.org/assetgraph/assetgraph-builder.png?branch=master)](https://travis-ci.org/assetgraph/assetgraph-builder)
-[![Coverage Status](https://coveralls.io/repos/assetgraph/assetgraph-builder/badge.png)](https://coveralls.io/r/assetgraph/assetgraph-builder)
-[![Dependency Status](https://david-dm.org/assetgraph/assetgraph-builder.png)](https://david-dm.org/assetgraph/assetgraph-builder)
+[![NPM version](https://badge.fury.io/js/assetgraph-builder.svg)](http://badge.fury.io/js/assetgraph-builder)
+[![Build Status](https://travis-ci.org/assetgraph/assetgraph-builder.svg?branch=master)](https://travis-ci.org/assetgraph/assetgraph-builder)
+[![Coverage Status](https://coveralls.io/repos/assetgraph/assetgraph-builder/badge.svg)](https://coveralls.io/r/assetgraph/assetgraph-builder)
+[![Dependency Status](https://david-dm.org/assetgraph/assetgraph-builder.svg)](https://david-dm.org/assetgraph/assetgraph-builder)
 
 AssetGraph-based build system (mostly) for single-page web
 applications.
@@ -78,6 +78,7 @@ Features
    of code due to the reliance on high level <a
    href="https://github.com/One-com/assetgraph">AssetGraph</a>
    transforms.
+ * Angular annotations with [ng-annotate](https://github.com/olov/ng-annotate) and angular template inlining.
 
 
 Installation
@@ -87,27 +88,50 @@ Optional first step: To take full advantage of the image processing
 and optimization features, you need several libraries and command line
 utilities installed. On Ubuntu you can grab them all by running:
 
-    sudo apt-get install -y libcairo2-dev libjpeg8-dev libgif-dev optipng pngcrush pngquant libpango1.0-dev graphicsmagick libjpeg-progs inkscape
+```
+sudo apt-get install -y libcairo2-dev libjpeg8-dev libgif-dev optipng pngcrush pngquant libpango1.0-dev graphicsmagick libjpeg-progs inkscape
+```
 
 Or on OS X, with [homebrew](http://brew.sh/):
 
-    brew install cairo jpeg giflib optipng pngcrush pngquant pango graphicsmagick jpeg-turbo inkscape
-    export PKG_CONFIG_PATH=/opt/X11/lib/pkgconfig
+```
+brew install cairo jpeg giflib optipng pngcrush pngquant pango graphicsmagick jpeg-turbo inkscape
+export PKG_CONFIG_PATH=/opt/X11/lib/pkgconfig
+```
 
 
 Then make sure you have node.js and <a href="http://npmjs.org/">npm</a> installed,
 then run:
 
-    $ npm install -g assetgraph-builder
+```
+$ npm install -g assetgraph-builder
+```
 
 Now you'll have the `buildProduction` script in your PATH.
+
+Usage
+-----
+
+```
+$ buildProduction --outroot outputPath [--root webrootPath] [startingAssets]
+```
+
+Assetgraph needs a web root to resolve URLs correctly. If you pass in the `--root` option assetgraph will use it, otherwise it will take a best guess based on your `startingAssets`.
+
+The `--outroot` option tells assetgraph-builder where to write the built files to. If the directory does not exist it will be created for you.
+
+Your `startingAssets` can be one or more file paths or minimatch patterns, which will be used as the starting point of assetgraphs automatic discovery process. The default is `index.html`, but you might also want to add any file here that is not linked to by your website, but still has to be a part of the build, for example `robots.txt`, `.htaccess` or `404.html`. If one or more files are missing from your build, check that you are actually linking to them. If you are not, and it is by design, then you should add these files as input paths in `startingAssets`.
+
+There are many more options to assetgraph-builder. We suggest you consult the help with `buildProduction -h`.
 
 Example usage
 -------------
 
 Build a single page application:
 
-    buildProduction --outroot path/to/production --root path/to/dev path/to/dev/index.html
+```
+buildProduction --outroot path/to/production --root path/to/dev path/to/dev/index.html
+```
 
 This will load path/to/dev/index.html, follow all local relations to
 JavaScript, CSS, etc., perform the above mentioned optimizations, then
@@ -115,9 +139,11 @@ output the result to the directory `path/to/production`.
 
 Create a CDN-enabled build:
 
-    buildProduction --outroot path/to/production --root path/to/dev path/to/dev/index.html \
-                    --cdnroot http://xxxxxx.cloudfront.net/static/cdn \
-                    --cdnoutroot path/to/production/static/cdn
+```
+buildProduction --outroot path/to/production --root path/to/dev path/to/dev/index.html \
+                --cdnroot http://xxxxxx.cloudfront.net/static/cdn \
+                --cdnoutroot path/to/production/static/cdn
+```
 
 This will produce a build that assumes that the contents of `path/to/production/static/cdn`
 are available at `http://xxxxxx.cloudfront.net/static/cdn`. We recommend putting the entire
@@ -255,7 +281,7 @@ a specific compression level:
 
 ```html
 <img src="myImage.png?pngquant=37">
-<img src="myOtherImage.png?optipng=-o7&amp;pngcrush=-rem,tEXT">
+<img src="myOtherImage.png?optipng=-o7&amp;pngcrush=-rem+tEXT">
 ```
 
 The image processing is supported everywhere you can refer to an
@@ -267,8 +293,27 @@ href="https://github.com/aheckmann/gm">gm module</a>) are supported:
 
 ```css
 body {
-    background-image: url(foo.png?resize=500,300&flip&magnify&pngcrush);
+    background-image: url(foo.png?resize=500+300&flip&magnify&pngcrush);
 }
+```
+
+These are especially useful for responsive images:
+
+```html
+<img srcset="bar.jpg 1024w,
+             bar.jpg?resize=600 600w,
+             bar.jpg?resize=500&amp;gravity=Center&amp;crop=300+300 300w"
+     sizes="(min-width: 768px) 50vw, 100vw">
+```
+
+They work in JavaScript too:
+
+```js
+var img = document.querySelector('.responsive-image');
+img.setAttribute('srcset',
+  GETSTATICURL('baz.gif') + ' 500w, ' +
+  GETSTATICURL('baz.gif?resize=300') + ' 300w');
+picturefill({ elements: [img] }); // reload if you're using Picturefill
 ```
 
 This allows you to only check your original images into version
@@ -302,28 +347,30 @@ example `--locales en_us,da,fr,de`.
 The translations themselves reside in separate JSON files with an
 `i18n` extension. Example syntax (`foo.i18n`):
 
-    {
-        "myKeyName": {
-            "en": "The value in English",
-            "da": "Værdien på dansk"
-        },
-        "myOtherKeyName": {
-            "en": "The other value in English",
-            "da": "Den anden værdi på dansk"
-        },
-        "advancedKeyWithPlaceholders": {
-            "en": "Showing {0}-{1} of {2} records",
-            "da": "Der er {2} i alt, viser fra nr. {0} til nr. {1}"
-        },
-        "IAmSoXToday": {
-            "en": "I am so {0} today",
-            "da": "Jeg er så {0} i dag"
-        },
-        "TheColor": {
-            "en": "blue",
-            "da": "blå"
-        }
+```json
+{
+    "myKeyName": {
+        "en": "The value in English",
+        "da": "Værdien på dansk"
+    },
+    "myOtherKeyName": {
+        "en": "The other value in English",
+        "da": "Den anden værdi på dansk"
+    },
+    "advancedKeyWithPlaceholders": {
+        "en": "Showing {0}-{1} of {2} records",
+        "da": "Der er {2} i alt, viser fra nr. {0} til nr. {1}"
+    },
+    "IAmSoXToday": {
+        "en": "I am so {0} today",
+        "da": "Jeg er så {0} i dag"
+    },
+    "TheColor": {
+        "en": "blue",
+        "da": "blå"
     }
+}
+```
 
 ### JavaScript i18n syntax ###
 
@@ -344,36 +391,42 @@ actually have something to put in them.
 
 JavaScript example:
 
-    INCLUDE('foo.i18n');
+```javascript
+INCLUDE('foo.i18n');
 
-    // This alerts "The value in English" or "Værdien på dansk" depending on which build you're running:
-    alert(TR('myKeyName', 'the default value'));
+// This alerts "The value in English" or "Værdien på dansk" depending on which build you're running:
+alert(TR('myKeyName', 'the default value'));
 
-    // This alerts "Showing 1-50 of 100 records" or "Der er 100 i alt, viser fra nr. 1 til nr. 50":
-    var foo = 1, bar = 50;
-    alert(TRPAT('advancedKeyWithPlaceholders', 'the default value')(foo, bar, 100));
+// This alerts "Showing 1-50 of 100 records" or "Der er 100 i alt, viser fra nr. 1 til nr. 50":
+var foo = 1, bar = 50;
+alert(TRPAT('advancedKeyWithPlaceholders', 'the default value')(foo, bar, 100));
 
-    var myRenderer = TRPAT('advancedKeyWithPlaceholders', 'the default value');
-    // This also alerts "Showing 1-2 of 3 records" or "Der er 100 i alt, viser fra nr. 1 til nr. 50":
-    alert(myRenderer(1, 50, 100));
+var myRenderer = TRPAT('advancedKeyWithPlaceholders', 'the default value');
+// This also alerts "Showing 1-2 of 3 records" or "Der er 100 i alt, viser fra nr. 1 til nr. 50":
+alert(myRenderer(1, 50, 100));
+```
 
 In production this compiles into (English version):
 
-    alert('The value in English');
-    var foo = 1, bar = 50;
-    alert('Showing ' + foo + '-' + bar + ' of 100 records');
+```javascript
+alert('The value in English');
+var foo = 1, bar = 50;
+alert('Showing ' + foo + '-' + bar + ' of 100 records');
 
-    var myRenderer = function (a0, a1, a2) {return 'Showing ' + a0 + '-' + a1 + ' of ' + a2 + ' records'};
-    alert(myRenderer(1, 50, 100));
+var myRenderer = function (a0, a1, a2) {return 'Showing ' + a0 + '-' + a1 + ' of ' + a2 + ' records'};
+alert(myRenderer(1, 50, 100));
+```
 
 And the Danish version:
 
-    alert('Værdien på dansk');
-    var foo = 1, bar = 50;
-    alert('Der er 100 i alt, viser fra nr. ' + foo + ' til nr. ' + bar);
+```javascript
+alert('Værdien på dansk');
+var foo = 1, bar = 50;
+alert('Der er 100 i alt, viser fra nr. ' + foo + ' til nr. ' + bar);
 
-    var myRenderer = function (a0, a1, a2) {return 'Der er ' + a3 + ' i alt, viser nr. ' + a0 + ' til nr. ' + a1;};
-    alert(myRenderer(1, 50, 100));
+var myRenderer = function (a0, a1, a2) {return 'Der er ' + a3 + ' i alt, viser nr. ' + a0 + ' til nr. ' + a1;};
+alert(myRenderer(1, 50, 100));
+```
 
 As the translation files consist of plain JSON, translated values do
 not have to be strings. This enables more advanced features, that you
@@ -384,30 +437,34 @@ real name. That could be achieved the following way.
 
 The translation file:
 
-    {
-        "FolderName": {
-            "en": {
-                "Inbox" : "Inbox",
-                "Draft" : "Draft",
-                "Sent" : "Sent Mail"
-            },
-            "da": {
-                "Inbox" : "Indbakke",
-                "Draft" : "Kladder",
-                "Trash" : "Sendte e-mails"
-            }
+```json
+{
+    "FolderName": {
+        "en": {
+            "Inbox" : "Inbox",
+            "Draft" : "Draft",
+            "Sent" : "Sent Mail"
+        },
+        "da": {
+            "Inbox" : "Indbakke",
+            "Draft" : "Kladder",
+            "Trash" : "Sendte e-mails"
         }
     }
+}
+```
 
 The code translating the e-mail folder names:
 
-    var folderTranslations = TR("FolderName", {
-        "Inbox" : "Inbox",
-        "Draft" : "Draft",
-        "Sent" : "Sent Mail"
-    });
+```javascript
+var folderTranslations = TR("FolderName", {
+    "Inbox" : "Inbox",
+    "Draft" : "Draft",
+    "Sent" : "Sent Mail"
+});
 
-    return folderTranslations[folderName] || folderName;
+return folderTranslations[folderName] || folderName;
+```
 
 The `TR` function call extracts the internationalized `FolderName`
 structure or uses the provided default. Then we look for the folder
@@ -418,37 +475,53 @@ otherwise we just return the folder name.
 
 Simple example:
 
-    <p><span data-i18n="myKeyName">The default text</span></p>
+```html
+<p><span data-i18n="myKeyName">The default text</span></p>
+```
 
 Span tags that only have a `data-i18n` attribute are removed, so the above compiles to:
 
-    <p>The value in English</p>
+```html
+<p>The value in English</p>
+```
 
 If you put the `data-i18n` attribute on a different tag (eg. `<div>`
 or `<h2>`) or use a span with additional attributes, the tag itself
 will be preserved, and only the `data-i18n` attribute will be removed:
 
-     <span class="foo" data-i18n="myKeyName">The default text</span>
+```html
+<span class="foo" data-i18n="myKeyName">The default text</span>
+```
 
 Which compiles into:
 
-     <span class="foo">The value in English</span>
+```html
+<span class="foo">The value in English</span>
+```
 
 Non-text node elements inside the default text are interpreted as placeholders numbered from left to right:
 
-     <span data-i18n="advancedKeyWithPlaceholders">Showing <span>1</span> to <span>50</span> of <span>100</span></span>
+```html
+<span data-i18n="advancedKeyWithPlaceholders">Showing <span>1</span> to <span>50</span> of <span>100</span></span>
+```
 
 In the Danish version the above compiles to:
 
-     Der er <span>100</span> i alt, viser nr. <span>1</span> til nr. <span>50</span>.
+```html
+Der er <span>100</span> i alt, viser nr. <span>1</span> til nr. <span>50</span>.
+```
 
 For HTML attributes there's a more elaborate, Knockout.js-ish syntax for the `data-i18n` attribute:
 
-    <div title="The default value" data-i18n="text: 'myKeyName', attr: {title: 'myOtherKeyName'}">The default value</span>
+```html
+<div title="The default value" data-i18n="text: 'myKeyName', attr: {title: 'myOtherKeyName'}">The default value</span>
+```
 
 Which compiles to this in English:
 
-    <div title="The other value in English">The value in English</span>
+```html
+<div title="The other value in English">The value in English</span>
+```
 
 
 ### I18n of HTML chunks in JavaScript ###

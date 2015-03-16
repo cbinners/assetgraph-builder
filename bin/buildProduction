@@ -77,8 +77,19 @@ var chalk = require('chalk'),
             type: 'boolean',
             default: true
         })
+        .options('minify', {
+            describe: 'Minifies HTML, CSS, SVG and Javascript.',
+            type: 'boolean',
+            default: true
+        })
         .options('nocompress', {
             describe: 'Prettifies HTML, CSS and Javascript for easier debugging',
+            alias: 'no-compress',
+            type: 'boolean',
+            default: false
+        })
+        .options('removedeadifs', {
+            describe: 'Optimize away certain if (...) {...} constructs. Only makes sense with --nocompress as UglifyJS includes the same optimization',
             type: 'boolean',
             default: false
         })
@@ -89,6 +100,11 @@ var chalk = require('chalk'),
         })
         .options('noscss', {
             describe: 'Keep .scss files as they are instead of automatically compiling them to CSS',
+            type: 'boolean',
+            default: false
+        })
+        .options('nofilerev', {
+            describe: 'Revision files with a hash of their content in their file name for optimal far future caching',
             type: 'boolean',
             default: false
         })
@@ -103,7 +119,7 @@ var chalk = require('chalk'),
             type: 'string'
         })
         .options('inline', {
-            describe: 'Set size threshold for inlining. Supported values: false (never inline), true (always inline), number (inline if target is smaller than this number of bytes). Also supported: --inlinehtmlscript true, --inlinecssimage 8192 etc.',
+            describe: 'Set size threshold for inlining. Supported values: false (never inline), true (always inline, except when found inside @media queries), number (inline if target is smaller than this number of bytes). Also supported: --inlinehtmlscript true, --inlinecssimage 8192 etc.',
             default: false
         })
         .options('cdnhtml', {
@@ -147,6 +163,10 @@ var chalk = require('chalk'),
         })
         .options('sweep', {
             describe: 'Experimental: Free up memory by cleaning up relations and assets after they have been removed from the graph',
+            type: 'boolean'
+        })
+        .options('angular', {
+            describe: 'Enable Angular.js specific annotations and template inlining',
             type: 'boolean'
         });
         /*
@@ -217,7 +237,7 @@ if (commandLineOptions.cdnoutroot) {
     console.warn(chalk.yellow('INFO: the --cdnoutroot switch is deprecated. Default location for your cdn assets is now <outroot>/static/cdn'));
 }
 
-var _ = require('underscore'),
+var _ = require('lodash'),
     AssetGraph = require('../lib/AssetGraph'),
     uglifyJs = AssetGraph.JavaScript.uglifyJs,
     uglifyAst = AssetGraph.JavaScript.uglifyAst,
@@ -351,6 +371,7 @@ new AssetGraph({root: rootUrl})
         optimizeImages: commandLineOptions.optimizeimages,
         inlineByRelationType: inlineByRelationType,
         gzip: commandLineOptions.gzip,
+        noFileRev: commandLineOptions.nofilerev,
         defines: defines,
         reservedNames: reservedNames,
         localeIds: localeIds,
@@ -364,12 +385,15 @@ new AssetGraph({root: rootUrl})
         recursive: commandLineOptions.recursive,
         cdnFlash: !commandLineOptions.nocdnflash,
         cdnHtml: commandLineOptions.cdnhtml,
+        minify: commandLineOptions.minify,
         noCompress: commandLineOptions.nocompress,
+        removeDeadIfs: commandLineOptions.removedeadifs,
         sharedBundles: commandLineOptions.sharedbundles,
         stripDebug: !commandLineOptions.debug,
         addInitialHtmlExtension: commandLineOptions.addinitialhtmlextension,
         canonicalUrl: canonicalUrl,
-        javaScriptSerializationOptions: javaScriptSerializationOptions
+        javaScriptSerializationOptions: javaScriptSerializationOptions,
+        angular: commandLineOptions.angular
     })
     .writeAssetsToDisc({url: canonicalUrl ? query.createPrefixMatcher(canonicalUrl) : /^file:/, isLoaded: true}, outRoot, canonicalUrl)
     .if(cdnRoot)

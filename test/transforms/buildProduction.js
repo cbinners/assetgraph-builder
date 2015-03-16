@@ -188,7 +188,7 @@ describe('buildProduction', function () {
                 expect(assetGraph, 'to contain asset', {type: 'Png', url: /\/bar\.png$/});
                 expect(assetGraph, 'to contain asset', {type: 'Png', url: /\/quux\.png$/});
             })
-            .buildProduction({version: false})
+            .buildProduction({version: false, angular: true})
             .queue(function (assetGraph) {
                 expect(assetGraph, 'to contain no relations', {type: 'JavaScriptAngularJsTemplateCacheAssignment'});
                 expect(assetGraph.findAssets({type: 'Html'})[0].text.replace(/src=static\/bundle-\d+\.[a-f0-9]{10}\.js/, 'src=MD5.js'), 'to equal', '<!DOCTYPE html><html ng-app=myApp><head><title>My AngularJS App</title></head><body><ul class=menu><li><a href=#/view1>view1</a></li> <li><a href=#/view2>view2</a></li> <li><a href=#/view3>view3</a></li> <li><a href=#/view4>view4</a></li></ul><div ng-view=""></div><script src=MD5.js></script><script type=text/ng-template id=partials/2.html><h1>2: Template in a &lt;script type="text/ng-template"&gt;-tag</h1></script><script type=text/ng-template id=partials/1.html><h1>1: External template loaded asynchronously with <code>templateUrl: \'partials/1.html\'</code></h1></script><script type=text/ng-template id=partials/4.html><h1>4: Template with a relation (<img src="static/bar.d65dd5318f.png">) injected <span data-i18n="foo">directly</span> into <code>$templateCache</code></h1></script><script type=text/ng-template id=partials/5.html><h1>5: Template with a relation (<img src="static/quux.d65dd5318f.png">) injected directly into <code>$templateCache</code>, but using a different variable name</h1></script></body></html>');
@@ -220,7 +220,7 @@ describe('buildProduction', function () {
         new AssetGraph({root: __dirname + '/../../testdata/transforms/buildProduction/angularJs/'})
             .registerRequireJsConfig()
             .loadAssets('index.html')
-            .buildProduction({version: false, localeIds: ['en', 'da']})
+            .buildProduction({version: false, angular: true, localeIds: ['en', 'da']})
             .queue(function (assetGraph) {
                 expect(assetGraph, 'to contain assets', {type: 'Html', isFragment: false}, 2);
                 expect(assetGraph, 'to contain assets', {type: 'JavaScript'}, 2);
@@ -260,7 +260,7 @@ describe('buildProduction', function () {
         new AssetGraph({root: __dirname + '/../../testdata/transforms/buildProduction/angularJs/'})
             .registerRequireJsConfig()
             .loadAssets('**/*.html')
-            .buildProduction({version: false})
+            .buildProduction({version: false, angular: true})
             .queue(function (assetGraph) {
                 expect(assetGraph, 'to contain no relations', {type: 'JavaScriptAngularJsTemplateCacheAssignment'});
                 expect(assetGraph.findAssets({type: 'Html'})[0].text.replace(/src=static\/bundle-\d+\.[a-f0-9]{10}\.js/, 'src=MD5.js'), 'to equal', '<!DOCTYPE html><html ng-app=myApp><head><title>My AngularJS App</title></head><body><ul class=menu><li><a href=#/view1>view1</a></li> <li><a href=#/view2>view2</a></li> <li><a href=#/view3>view3</a></li> <li><a href=#/view4>view4</a></li></ul><div ng-view=""></div><script src=MD5.js></script><script type=text/ng-template id=partials/2.html><h1>2: Template in a &lt;script type="text/ng-template"&gt;-tag</h1></script><script type=text/ng-template id=partials/1.html><h1>1: External template loaded asynchronously with <code>templateUrl: \'partials/1.html\'</code></h1></script><script type=text/ng-template id=partials/4.html><h1>4: Template with a relation (<img src="static/bar.d65dd5318f.png">) injected <span data-i18n="foo">directly</span> into <code>$templateCache</code></h1></script><script type=text/ng-template id=partials/5.html><h1>5: Template with a relation (<img src="static/quux.d65dd5318f.png">) injected directly into <code>$templateCache</code>, but using a different variable name</h1></script></body></html>');
@@ -298,7 +298,7 @@ describe('buildProduction', function () {
                 expect(assetGraph, 'to contain relations', {type: 'JavaScriptAngularJsTemplate'}, 2);
                 expect(assetGraph, 'to contain asset', {type: 'Html', isFragment: true});
             })
-            .buildProduction({version: false})
+            .buildProduction({version: false, angular: true})
             .queue(function (assetGraph) {
                 expect(assetGraph, 'to contain relation', {type: 'HtmlInlineScriptTemplate'});
                 expect(assetGraph, 'to contain asset', {type: 'Html', isFragment: true, isInline: true});
@@ -928,6 +928,19 @@ describe('buildProduction', function () {
             .run(done);
     });
 
+    it('should keep favicon.ico at its original location when file revision is disabled', function (done) {
+        new AssetGraph({root: __dirname + '/../../testdata/transforms/buildProduction/faviconOutsideRoot/'})
+            .registerRequireJsConfig({preventPopulationOfJavaScriptAssetsUntilConfigHasBeenFound: true})
+            .loadAssets(['index.html'])
+            .populate()
+            .buildProduction({version: false, noFileRev: true})
+            .queue(function (assetGraph) {
+                expect(assetGraph, 'to contain asset', {url: assetGraph.root + 'foo/favicon.ico'});
+                expect(assetGraph.findAssets({type: 'Html'})[0].text, 'to equal', '<!DOCTYPE html><html><head><link rel="shortcut icon" type=image/vnd.microsoft.icon href=foo/favicon.ico></head><body></body></html>');
+            })
+            .run(done);
+    });
+
     it('should handle a test case with an RSS feed (#118)', function (done) {
         new AssetGraph({root: __dirname + '/../../testdata/transforms/buildProduction/rss/'})
             .registerRequireJsConfig({preventPopulationOfJavaScriptAssetsUntilConfigHasBeenFound: true})
@@ -1085,5 +1098,45 @@ describe('buildProduction', function () {
                 expect(htmlAsset.text, 'to contain', 'data-bind="template:{name:\'application\',if:isInitialized');
              })
             .run(done);
+    });
+
+    describe('angularAnnotations', function () {
+        it('should not annotate a basic example when angular option is false', function (done) {
+            new AssetGraph({ root: __dirname + '/../../testdata/transforms/angularAnnotations' })
+                .registerRequireJsConfig({preventPopulationOfJavaScriptAssetsUntilConfigHasBeenFound: true})
+                .loadAssets('basic.js')
+                .populate()
+                .buildProduction({
+                    angular: false,
+                    noCompress: true
+                })
+                .queue(function (assetGraph) {
+                    expect(assetGraph, 'to contain assets', 'JavaScript', 1);
+
+                    var asset = assetGraph.findAssets()[0];
+
+                    expect(asset.text, 'to be', '/*global angular*/\nangular.module("MyMod").controller("MyCtrl", function($scope, $timeout) {\n    return [ $scope, $timeout ];\n});');
+                })
+                .run(done);
+        });
+
+        it('should annotate a basic example when angular option is true', function (done) {
+            new AssetGraph({ root: __dirname + '/../../testdata/transforms/angularAnnotations' })
+                .registerRequireJsConfig({preventPopulationOfJavaScriptAssetsUntilConfigHasBeenFound: true})
+                .loadAssets('basic.js')
+                .populate()
+                .buildProduction({
+                    angular: true,
+                    noCompress: true
+                })
+                .queue(function (assetGraph) {
+                    expect(assetGraph, 'to contain assets', 'JavaScript', 1);
+
+                    var asset = assetGraph.findAssets()[0];
+
+                    expect(asset.text, 'to be', '/*global angular*/\nangular.module("MyMod").controller("MyCtrl", [ "$scope", "$timeout", function($scope, $timeout) {\n    return [ $scope, $timeout ];\n} ]);');
+                })
+                .run(done);
+        });
     });
 });
